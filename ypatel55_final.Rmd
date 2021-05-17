@@ -1,0 +1,403 @@
+---
+title: "Final Project STAT385"
+author: ""
+date: ""
+output: html_document
+runtime: shiny
+---
+
+```{r}
+library(shiny)
+library(tidyverse)
+
+CCSO <- read.csv('https://urldefense.com/v3/__https://uofi.box.com/shared/static/9elozjsg99bgcb7gb546wlfr3r2gc9b7.csv__;!!DZ3fjg!qne6EGT2quooBkl5yefW0Q7-9ahvQK16VabWd7V9ijMdaIbnYzNYU_bir-Vz4RLl8a0$ ')
+```
+
+```{}
+Below is a scatterplot that allows users to visually see the relations between the age a person got arrested and how many days they spent in jail by giving inputs such as the person's race and the year of the data.  This also displays the effect certain variables have on data trends over time.
+```
+
+Age at Arrest vs Days in Jail by Race
+```{r}
+ui <- fluidPage(
+  
+   selectInput("race", "Choose a race:",
+      c("All", "White", "Black", "Hispanic", "Asian/Pacific Islander", "Native American", "Unknown")),
+        
+  
+  sliderInput(inputId = "year",
+              label = "Year:",
+              min = 2011,
+              max = 2016,
+              value = 2011, sep="", animate =
+                            animationOptions(interval = 500)),
+  
+  plotOutput(outputId = "scatPlot")
+
+)
+
+
+server <- function(input, output) {
+  
+  output$scatPlot <- renderPlot({
+    
+    if (input$race == "All") {
+      x    <- CCSO[(grepl(input$year, CCSO$BOOKING.DATE)), 27]
+      y    <- CCSO[(grepl(input$year, CCSO$BOOKING.DATE)), 31]
+    } else {
+      CCSOyearX <- CCSO[(grepl(input$year, CCSO$BOOKING.DATE)), 27]
+      CCSOyearY <- CCSO[(grepl(input$year, CCSO$BOOKING.DATE)), 31]
+    
+      x    <- CCSOyearX[(grepl(input$race, CCSO$RACE))]
+      y    <- CCSOyearY[(grepl(input$race, CCSO$RACE))]
+    }
+    
+    plot(x, y, col = 'navy', xlab="Age at Arrest in years", ylab="Days in Jail", pch=16, main="CCSO Bookings Data")
+    
+  })
+}
+
+shinyApp(ui = ui, server = server, options = list(height = 1000))
+```
+
+Number of Bookings per Year Across Races
+```{r}
+# Data Cleaning
+CCSO_allRaces <- CCSO %>%
+                mutate(BOOKING.DATE = as.numeric(format(as.Date(BOOKING.DATE, "%m/%d/%Y"), '%Y'))) %>%
+                group_by(BOOKING.DATE) %>%
+                summarise("count" = n()) 
+
+CCSO_asian <- CCSO %>%
+                mutate(BOOKING.DATE = as.numeric(format(as.Date(BOOKING.DATE, "%m/%d/%Y"), '%Y'))) %>%
+                filter(RACE == "Asian/Pacific Islander") %>%
+                group_by(BOOKING.DATE) %>%
+                summarise("Asian/Pacific Islander" = n()) %>%
+                select("Asian/Pacific Islander") 
+
+CCSO_black <- CCSO %>%
+                mutate(BOOKING.DATE = as.numeric(format(as.Date(BOOKING.DATE, "%m/%d/%Y"), '%Y'))) %>%
+                filter(RACE == "Black") %>%
+                group_by(BOOKING.DATE) %>%
+                summarise("Black" = n()) %>%
+                select("Black") 
+
+CCSO_hispanic <- CCSO %>%
+                mutate(BOOKING.DATE = as.numeric(format(as.Date(BOOKING.DATE, "%m/%d/%Y"), '%Y'))) %>%
+                filter(RACE == "Hispanic") %>%
+                group_by(BOOKING.DATE) %>%
+                summarise("Hispanic" = n()) %>%
+                select("Hispanic") 
+
+CCSO_native_american <- CCSO %>%
+                mutate(BOOKING.DATE = as.numeric(format(as.Date(BOOKING.DATE, "%m/%d/%Y"), '%Y'))) %>%
+                filter(RACE == "Native American") %>%
+                group_by(BOOKING.DATE) %>%
+                summarise("Native American" = n()) %>%
+                select("Native American") 
+
+CCSO_unknown <- CCSO %>%
+                mutate(BOOKING.DATE = as.numeric(format(as.Date(BOOKING.DATE, "%m/%d/%Y"), '%Y'))) %>%
+                filter(RACE == "Unknown" | RACE == "") %>%
+                group_by(BOOKING.DATE) %>%
+                summarise("Unknown" = n()) %>%
+                select("Unknown") 
+
+CCSO_white <- CCSO %>%
+                mutate(BOOKING.DATE = as.numeric(format(as.Date(BOOKING.DATE, "%m/%d/%Y"), '%Y'))) %>%
+                filter(RACE == "White" | RACE == "White (Hispanic)") %>%
+                group_by(BOOKING.DATE) %>%
+                summarise("White" = n()) %>%
+                select("White") 
+
+
+
+df <- cbind(CCSO_asian, CCSO_black, CCSO_hispanic, CCSO_native_american, CCSO_unknown, CCSO_white)
+rownames(df) <- c("2011", "2012", "2013", "2014", "2015", "2016")
+
+# load the shiny package
+library(shiny)
+
+# define the user interface object with the appearance of the app
+ui <- fluidPage(
+    # make a header
+    tags$h1("Number of Bookings Per Year Across Races"),
+  
+    # make a paragraph
+    tags$p("This app shows the number of bookings per year across races from the Champiagn County Jail Data"),
+    
+    # make a paragraph
+    tags$p("Below you can select the Race for which the number of bookings per year will be displayed."),
+    
+  selectInput(
+    inputId = "RACE", label = "RACE",
+    choices = colnames(df)
+  ),
+  plotOutput(outputId = "barplot")
+)
+## Make the y-axis static 
+# define the server function with instructions to build the
+# objects displayed in the ui
+server <- function(input, output) {
+  output$barplot <- renderPlot({
+    barplot(df[, input$RACE],
+      main = input$RACE,
+      xlab = "YEAR",
+      ylab = "Number of Bookings",
+      names.arg = rownames(df)
+    )
+  })
+}
+
+# call shinyApp() which returns the Shiny app object
+shinyApp(ui = ui, server = server, options = list(height = 500))
+```
+
+
+Age distribution of bookings by year
+```{r}
+viz <- read_csv("https://urldefense.com/v3/__https://uofi.box.com/shared/static/9elozjsg99bgcb7gb546wlfr3r2gc9b7.csv__;!!DZ3fjg!rYdTbdZmYGxCDmcKUFxWcCL7b94fyBV_YPKLeRDlrsLVFEVx-vaj2pTp-iF-krQtB9QoSw$ ", 
+                 col_types = cols_only(`BOOKING DATE` = col_date(format = "%m/%d/%Y"), 
+                                       `Age at Arrest` = col_integer()))
+viz$`BOOKING DATE` <- as.Date(viz$`BOOKING DATE`, c("%m/%d/%Y"))
+viz$`Age at Arrest`<- as.numeric(viz$`Age at Arrest`)
+
+CCSOyears <- split(viz, format(viz$`BOOKING DATE`, format = "%Y"))
+
+ui <- fluidPage(
+    
+    tags$h1("Visualizing Trends in Champaign County Jail Bookings from 2011-2016"),
+    
+    tags$p("The visualization below shows trends in the age distribution of individuals booked into jail over the years. 
+           The histogram has two inputs: 1) the year of interest and 2) the bins for the plot itself."),
+    
+    sidebarLayout(
+        
+        sidebarPanel(
+            
+            sliderInput(inputId = "year",
+                        label = "Year:",
+                        sep = "",
+                        min = 2011,
+                        max = 2016,
+                        value = 2011,
+                        animate =
+                            animationOptions(interval = 1000)
+            ),
+            
+            sliderInput(inputId = "bins",
+                        label = "Number of Bins:",
+                        min = 25,
+                        max = 75,
+                        value = 25
+            )),
+        
+        mainPanel(
+            
+            plotOutput("histPlot")
+        )
+    )
+)
+
+
+server <- function(input, output) {
+    
+    output$histPlot <- renderPlot({
+        
+        y = abs(2010-input$year)
+        x    <- CCSOyears[[y]][["Age at Arrest"]]
+        bins <- seq(min(x), max(x), length.out = input$bins + 1)
+        
+        hist(x, breaks = bins, col = 'dodgerblue2', border = 'white',
+             xlim = c(0,120),
+             ylim = c(0,.125),
+             probability = TRUE,
+             ylab = "Proportion of Individuals",
+             xlab = "Age", 
+             main = paste("Age Distribution of Bookings in", input$year)
+        )
+        
+    })
+}
+
+shinyApp(ui = ui, server = server, options = list(height = 700))
+```
+
+```{r}
+viz2 <- read_csv("https://urldefense.com/v3/__https://uofi.box.com/shared/static/9elozjsg99bgcb7gb546wlfr3r2gc9b7.csv__;!!DZ3fjg!r1H3nwp1YCn91SJnBf0SLCqM1O7LqR6Mlh8BkZUEY9Yu2WtfzTG-CmaysHFF_JUjfd2G1A$ ", 
+                 col_types = cols_only(`BOOKING DATE` = col_date(format = "%m/%d/%Y"),
+                                       `EMPLOYMENT STATUS` = col_character(), 
+                                       `Days in Jail` = col_double()),
+)
+viz2 <- viz2[complete.cases(viz2),]
+
+viz2$`BOOKING DATE` <- as.Date(viz2$`BOOKING DATE`, c("%m/%d/%Y"))
+viz2$`EMPLOYMENT STATUS`<- as.factor(viz2$`EMPLOYMENT STATUS`)
+viz2$`Days in Jail` <- as.numeric(viz2$`Days in Jail`)
+ 
+names(viz2)[names(viz2) == 'BOOKING DATE'] <- 'book'
+names(viz2)[names(viz2) == 'EMPLOYMENT STATUS'] <- 'employ'
+names(viz2)[names(viz2) == 'Days in Jail'] <- 'days'
+
+viz2years <- split(viz2, format(viz2$book, format = "%Y"))
+
+ui <- fluidPage( 
+    
+    sidebarLayout(
+        
+        sidebarPanel(
+            
+            sliderInput(inputId = "year",
+                        h3("Year:"),
+                        sep = "",
+                        min = 2011,
+                        max = 2016,
+                        value = 2011,
+                        animate =
+                            animationOptions(interval = 1000)
+                               
+            ),
+            
+            radioButtons("group", 
+                        h3("Employment Status:"), 
+                        choices = unique(viz2$employ),
+                        selected = "Employed - Full Time"
+            ),
+            
+            sliderInput(inputId = "bins",
+                        h3("Number of Bins:"),
+                        min = 25,
+                        max = 75,
+                        value = 25,
+                        animate =
+                            animationOptions(interval = 300)
+            )), 
+        
+        mainPanel(
+            
+            plotOutput("histPlot")
+        )
+    )
+)
+
+
+server <- function(input, output) {
+    
+    output$histPlot <- renderPlot({
+        
+        y    <- abs(2010-input$year)
+        a    <- viz2years[[y]][["days"]]
+        b    <- a[viz2years[[y]][["employ"]] == input$group]
+        bins <- seq(min(b), max(b), length.out = input$bins + 1)
+        
+        hist(b, breaks = bins, col = 'dodgerblue2', border = 'white',
+             xlim = c(0,400),
+             ylim = c(0,.25),
+             probability = T,
+             xlab = "Days in Jail", 
+             main = "Employment Status vs. Days in Jail"
+        )
+        
+    })
+}
+
+shinyApp(ui = ui, server = server, options = list(height = 700))
+
+```
+
+
+```{r}
+CCSO_denisbp2 <- read_csv("https://urldefense.com/v3/__https://uofi.box.com/shared/static/9elozjsg99bgcb7gb546wlfr3r2gc9b7.csv__;!!DZ3fjg!r1H3nwp1YCn91SJnBf0SLCqM1O7LqR6Mlh8BkZUEY9Yu2WtfzTG-CmaysHFF_JUjfd2G1A$ "
+)
+CCSO_denisbp2$`Days in Jail` <- as.numeric(CCSO_denisbp2$`Days in Jail`)
+
+CCSO_2011 = CCSO_denisbp2[1:13127,]
+CCSO_2012 = CCSO_denisbp2[13128:25653,]
+CCSO_2013 = CCSO_denisbp2[25654:37687,]
+CCSO_2014 = CCSO_denisbp2[37688:48508,]
+CCSO_2015 = CCSO_denisbp2[48509:58750,]
+CCSO_2016 = CCSO_denisbp2[58751:67764,]
+
+```
+
+
+```{r}
+make_data <- function(CCSO_data){
+  
+high = mean(CCSO_data[grepl('High School', CCSO_data$SCHOOL),]$`Days in Jail`, na.rm = TRUE)
+
+mid = mean(CCSO_data[grepl('Middle School', CCSO_data$SCHOOL),]$`Days in Jail`, na.rm = TRUE)
+
+acad = mean(CCSO_data[grepl('Academy', CCSO_data$SCHOOL),]$`Days in Jail`, na.rm = TRUE)
+
+ged = mean(CCSO_data[grepl('GED', CCSO_data$SCHOOL),]$`Days in Jail`, na.rm = TRUE)
+
+cc = mean(CCSO_data[grepl('Community College', CCSO_data$SCHOOL),]$`Days in Jail`, na.rm = TRUE)
+
+etc = mean(CCSO_data[grepl('Urbana Adult Ed', CCSO_data$SCHOOL) | grepl('local school', CCSO_data$SCHOOL) | grepl('Gerber', CCSO_data$SCHOOL) | grepl('Pavilion', CCSO_data$SCHOOL) | grepl('Storefront', CCSO_data$SCHOOL) | grepl('Yankee', CCSO_data$SCHOOL) | grepl('Judah', CCSO_data$SCHOOL),]$`Days in Jail`, na.rm = TRUE)
+
+non = mean(CCSO_data[grepl('Non-attender', CCSO_data$SCHOOL) | grepl('Unknown', CCSO_data$SCHOOL),]$`Days in Jail`, na.rm = TRUE)
+
+data_school = c(high,mid,acad,ged,cc,etc,non)
+
+return (data_school)
+}
+```
+
+```{r}
+data_2011 = make_data(CCSO_2011)
+data_2012 = make_data(CCSO_2012)
+data_2013 = make_data(CCSO_2013)
+data_2014 = make_data(CCSO_2014)
+data_2015 = make_data(CCSO_2015)
+data_2016 = make_data(CCSO_2016)
+```
+
+
+```{r}
+library(shiny)
+# Define UI for application that draws a histogram
+ui <- fluidPage(
+  
+    # Sidebar with a slider input for number of bins 
+      sliderInput(inputId = "bins",
+                        label = "Year:",
+                        min = 2011,
+                        max = 2016,
+                        value = 2011), #the comma is important
+      
+    # Show a plot of the generated distribution
+      plotOutput("distPlot")
+      )
+# Define server logic required to draw a histogram
+server <- function(input, output) {
+    output$distPlot <- renderPlot({
+        # generate bins based on input$bins from ui.R
+        if(input$bins == 2011) {
+          barplot(data_2011, main = "Average of Days in jails by each Education Level 2011", names.arg = c("High ", "Middle", "Academy", "GED", "Community", "Etc", "Non-attender"), ylim = c(0,60))
+        }
+        if(input$bins == 2012) {
+          barplot(data_2012, main = "Average of Days in jails by each Education Level 2012", names.arg = c("High ", "Middle", "Academy", "GED", "Community", "Etc", "Non-attender"), ylim = c(0,150))
+        }
+                if(input$bins == 2013) {
+          barplot(data_2013, main = "Average of Days in jails by each Education Level 2013", names.arg = c("High ", "Middle", "Academy", "GED", "Community", "Etc", "Non-attender"), ylim = c(0,30))
+        }
+        if(input$bins == 2014) {
+          barplot(data_2014, main = "Average of Days in jails by each Education Level 2014", names.arg = c("High ", "Middle", "Academy", "GED", "Community", "Etc", "Non-attender"), ylim = c(0,50))
+        }
+                if(input$bins == 2015) {
+          barplot(data_2015, main = "Average of Days in jails by each Education Level 2015", names.arg = c("High ", "Middle", "Academy", "GED", "Community", "Etc", "Non-attender"), ylim = c(0,100))
+        }
+        if(input$bins == 2016) {
+          barplot(data_2016, main = "Average of Days in jails by each Education Level 2016", names.arg = c("High ", "Middle", "Academy", "GED", "Community", "Etc", "Non-attender"), ylim = c(0,30))
+        }
+       
+  })
+}
+
+# Run the application 
+shinyApp(ui = ui, server = server, options = list(height = 500))
+
+```
+
+
